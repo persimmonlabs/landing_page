@@ -1,6 +1,6 @@
-import { auth } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import { createCompany, getUserCompanies } from '@/lib/company';
+import { requireUser } from '@/lib/supabase/server';
 import { z } from 'zod';
 
 const createCompanySchema = z.object({
@@ -12,16 +12,14 @@ const createCompanySchema = z.object({
 // GET /api/companies - Get user's companies
 export async function GET() {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const companies = await getUserCompanies(userId);
+    const user = await requireUser();
+    const companies = await getUserCompanies(user.id);
 
     return NextResponse.json(companies);
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Failed to fetch companies:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -30,12 +28,7 @@ export async function GET() {
 // POST /api/companies - Create a new company
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-
-    if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const user = await requireUser();
     const body = await req.json();
 
     // Validate input
@@ -50,7 +43,7 @@ export async function POST(req: Request) {
     const { name, industry, website } = validation.data;
 
     // Create company with user as owner
-    const company = await createCompany(userId, {
+    const company = await createCompany(user.id, {
       name,
       industry,
       website: website || undefined,
@@ -58,6 +51,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(company, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === 'Unauthorized') {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
     console.error('Failed to create company:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

@@ -1,19 +1,37 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
+import { createClient } from '@/lib/supabase/client';
 
 export default function CompanyOnboarding() {
   const router = useRouter();
-  const { user } = useUser();
+  const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [user, setUser] = useState<{ email?: string; user_metadata?: { first_name?: string } } | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     industry: '',
     website: '',
   });
+
+  useEffect(() => {
+    async function checkAuth() {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser();
+
+      if (!authUser) {
+        router.push('/auth/sign-in');
+        return;
+      }
+
+      setUser(authUser);
+    }
+
+    checkAuth();
+  }, [router, supabase.auth]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +73,7 @@ export default function CompanyOnboarding() {
               Welcome to Persimmon Labs
             </h1>
             <p className="text-gray-400">
-              {user?.firstName ? `Hi ${user.firstName}! ` : ''}
+              {user?.user_metadata?.first_name ? `Hi ${user.user_metadata.first_name}! ` : ''}
               Let's set up your company
             </p>
           </div>

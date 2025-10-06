@@ -17,8 +17,9 @@
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@clerk/nextjs": "^6.33.2",
     "@prisma/client": "^6.14.0",
+    "@supabase/ssr": "^0.7.0",
+    "@supabase/supabase-js": "^2.58.0",
     "@types/uuid": "^10.0.0",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.0",
@@ -30,7 +31,6 @@
     "prisma": "^6.14.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "svix": "^1.76.1",
     "tailwind-merge": "^2.2.0",
     "uuid": "^11.1.0",
     "zod": "^3.25.76"

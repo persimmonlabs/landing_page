@@ -2,9 +2,9 @@
 
 import { use, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserButton, useUser } from '@clerk/nextjs';
 import Link from 'next/link';
-import { Sparkles, Palette, LayoutDashboard } from 'lucide-react';
+import { Sparkles, Palette, LayoutDashboard, LogOut } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 
 export default function DashboardLayout({
   children,
@@ -15,15 +15,27 @@ export default function DashboardLayout({
 }) {
   const { companySlug } = use(params);
   const router = useRouter();
-  const { user, isLoaded } = useUser();
+  const supabase = createClient();
   const [company, setCompany] = useState<{ name: string; slug: string } | null>(null);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{ email?: string } | null>(null);
 
   useEffect(() => {
-    async function loadCompany() {
-      if (!isLoaded) return;
-
+    async function loadData() {
       try {
+        // Check auth
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+
+        if (!authUser) {
+          router.push('/auth/sign-in');
+          return;
+        }
+
+        setUser(authUser);
+
+        // Load companies
         const response = await fetch('/api/companies');
         if (!response.ok) throw new Error('Failed to fetch companies');
 
@@ -38,15 +50,20 @@ export default function DashboardLayout({
 
         setCompany(current);
       } catch (error) {
-        console.error('Error loading company:', error);
+        console.error('Error loading data:', error);
         router.push('/onboarding/company');
       } finally {
         setLoading(false);
       }
     }
 
-    loadCompany();
-  }, [isLoaded, companySlug, router]);
+    loadData();
+  }, [companySlug, router, supabase.auth]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/');
+  };
 
   if (loading) {
     return (
@@ -79,13 +96,16 @@ export default function DashboardLayout({
             </div>
 
             <div className="flex items-center space-x-4">
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: 'w-10 h-10',
-                  },
-                }}
-              />
+              {user && (
+                <div className="text-sm text-gray-400">{user.email}</div>
+              )}
+              <button
+                onClick={handleSignOut}
+                className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-300 hover:bg-white/5 hover:text-white transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Sign Out</span>
+              </button>
             </div>
           </div>
         </div>

@@ -1,0 +1,65 @@
+{
+  "name": "Persimmon Labs Demo Generator - Production",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "demo-generator",
+        "responseMode": "responseNode",
+        "responseCode": 200,
+        "responseData": "={ \"success\": true, \"message\": \"Demo generation started. Check your email in 60-90 seconds.\" }",
+        "options": {
+          "cors": {
+            "allowedOrigins": "*",
+            "allowedHeaders": "*",
+            "allowedMethods": ["POST", "OPTIONS"]
+          }
+        }
+      },
+      "id": "webhook-trigger",
+      "name": "Demo Request Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate and process input data\nconst requiredFields = ['brandName', 'email', 'industry'];\nconst missingFields = [];\n\nfor (const field of requiredFields) {\n  if (!$input.first().json[field]) {\n    missingFields.push(field);\n  }\n}\n\nif (missingFields.length > 0) {\n  throw new Error(`Missing required fields: ${missingFields.join(', ')}`);\n}\n\n// Validate email format\nconst emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;\nif (!emailRegex.test($input.first().json.email)) {\n  throw new Error('Invalid email format');\n}\n\n// Sanitize inputs\nconst sanitizedData = {\n  brandName: $input.first().json.brandName.trim().substring(0, 100),\n  email: $input.first().json.email.toLowerCase().trim(),\n  industry: $input.first().json.industry || 'General',\n  website: $input.first().json.website || '',\n  competitor: $input.first().json.competitor || '',\n  primaryColor: $input.first().json.primaryColor || '#F5793B',\n  targetAudience: $input.first().json.targetAudience || '',\n  timezone: $input.first().json.timezone || 'America/New_York',\n  timestamp: new Date().toISOString(),\n  requestId: Math.random().toString(36).substring(7)\n};\n\n// Content moderation - banned terms\nconst bannedTerms = ['guarantee', 'cure', 'medical', 'financial advice', 'get rich'];\nconst combinedText = Object.values(sanitizedData).join(' ').toLowerCase();\n\nfor (const term of bannedTerms) {\n  if (combinedText.includes(term)) {\n    throw new Error(`Content policy violation: ${term} detected`);\n  }\n}\n\nreturn [sanitizedData];"
+      },
+      "id": "validate-input",
+      "name": "Validate & Sanitize Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 300]
+    }
+  ],
+  "connections": {
+    "Demo Request Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Sanitize Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "pinData": {},
+  "versionId": "1.0.0",
+  "triggerCount": 1,
+  "tags": [
+    {
+      "name": "production",
+      "createdAt": "2024-01-01T00:00:00.000Z"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 import Scene from "@/components/Scene";
 import Overlay from "@/components/Overlay";
-import Manifesto from "@/components/Manifesto";
+import Continuum from "@/components/Continuum";
 import { useLanguage } from "@/components/LanguageContext";
 
 export default function Home() {
@@ -31,7 +31,7 @@ export default function Home() {
             </button>
 
             {/* Scrollable Content */}
-            <Manifesto />
+            <Continuum />
 
         </main>
     );

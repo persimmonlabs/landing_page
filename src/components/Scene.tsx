@@ -1,103 +1,90 @@
 "use client";
 
-import { Canvas, useFrame } from "@react-three/fiber";
-import { useRef, useMemo } from "react";
-import * as THREE from "three";
-import { Points, PointMaterial } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { useState, useEffect } from "react";
+import Persimmon from "@/components/three/Persimmon";
+import Starfield from "@/components/three/Starfield";
+import OrbitingElement from "@/components/three/OrbitingElement";
+import { getSphereColor, isSectionVisible } from "@/components/three/useScrollProgress";
+import { founder, works } from "@/data/works";
+import Image from "next/image";
 
-function Persimmon() {
-    const outerRef = useRef<THREE.Mesh>(null);
-    const innerRef = useRef<THREE.Mesh>(null);
+function SceneContent() {
+    const [scrollProgress, setScrollProgress] = useState(0);
 
-    useFrame((state) => {
-        const time = state.clock.getElapsedTime();
+    useEffect(() => {
+        const handleScroll = () => {
+            const scrollY = window.scrollY;
+            const maxScroll = document.body.scrollHeight - window.innerHeight;
+            setScrollProgress(Math.min(Math.max(scrollY / maxScroll, 0), 1));
+        };
 
-        // Calculate scroll progress (0 to 1)
-        const scrollY = window.scrollY;
-        const maxScroll = document.body.scrollHeight - window.innerHeight;
-        const progress = Math.min(Math.max(scrollY / maxScroll, 0), 1);
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        handleScroll();
 
-        // Camera Movement
-        // Start Z: 8, End Z: 2.5
-        const targetZ = 8 - (8 - 2.5) * progress;
-        state.camera.position.z = THREE.MathUtils.lerp(state.camera.position.z, targetZ, 0.1);
-
-        // Breathing Effect
-        // As user approaches (progress increases), breathing magnitude increases slightly
-        const baseScale = 1;
-        const breathingMag = 0.05 + (progress * 0.05); // 0.05 to 0.1
-        const scale = baseScale + Math.sin(time * 0.5) * breathingMag;
-
-        if (outerRef.current) {
-            outerRef.current.rotation.y += 0.0005; // Slightly faster than 0.0001 to be visible
-            outerRef.current.rotation.z += 0.0002;
-            outerRef.current.scale.set(scale, scale, scale);
-        }
-
-        if (innerRef.current) {
-            innerRef.current.scale.set(scale, scale, scale);
-        }
-    });
-
-    return (
-        <group>
-            {/* Outer Sphere */}
-            <mesh ref={outerRef}>
-                <sphereGeometry args={[0.8, 128, 128]} />
-                <meshPhongMaterial
-                    color="#EC5800"
-                    emissive="#2a0a00"
-                    wireframe={true}
-                    opacity={0.2}
-                    transparent={true}
-                />
-            </mesh>
-
-            {/* Inner Core */}
-            <mesh ref={innerRef}>
-                <sphereGeometry args={[0.3, 64, 64]} />
-                <meshBasicMaterial color="#EC5800" />
-            </mesh>
-        </group>
-    );
-}
-
-function Starfield() {
-    const ref = useRef<THREE.Points>(null);
-
-    const [positions] = useMemo(() => {
-        const positions = new Float32Array(2000 * 3);
-        for (let i = 0; i < 2000; i++) {
-            const r = 10 + Math.random() * 30; // Radius between 10 and 40
-            const theta = 2 * Math.PI * Math.random();
-            const phi = Math.acos(2 * Math.random() - 1);
-
-            positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-            positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-            positions[i * 3 + 2] = r * Math.cos(phi);
-        }
-        return [positions];
+        return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    useFrame((state, delta) => {
-        if (ref.current) {
-            ref.current.rotation.x -= delta / 100;
-            ref.current.rotation.y -= delta / 150;
-        }
-    });
+    const { color, emissive } = getSphereColor(scrollProgress);
+    const showPortrait = isSectionVisible(scrollProgress, "origins");
+    const showWorks = isSectionVisible(scrollProgress, "works");
 
     return (
-        <group rotation={[0, 0, Math.PI / 4]}>
-            <Points ref={ref} positions={positions} stride={3} frustumCulled={false}>
-                <PointMaterial
-                    transparent
-                    color="#EAEAEA"
-                    size={0.02}
-                    sizeAttenuation={true}
-                    depthWrite={false}
-                />
-            </Points>
-        </group>
+        <>
+            <color attach="background" args={["#050505"]} />
+            <fog attach="fog" args={["#050505", 5, 15]} />
+
+            <ambientLight intensity={0.5} />
+            <pointLight position={[10, 10, 10]} intensity={1} />
+
+            <Persimmon color={color} emissive={emissive} />
+            <Starfield />
+
+            {/* Portrait floating near sphere during Origins section */}
+            <OrbitingElement
+                radius={1.2}
+                angle={Math.PI * 0.15}
+                yOffset={0.4}
+                opacity={showPortrait ? 1 : 0}
+                scale={showPortrait ? 1 : 0.5}
+                floatIntensity={0.03}
+                startBehind={true}
+            >
+                <div className="w-20 h-20 md:w-28 md:h-28 rounded-full overflow-hidden opacity-90 hover:opacity-100 transition-opacity border border-persimmon/20">
+                    <Image
+                        src={founder.portrait}
+                        alt={founder.name}
+                        width={112}
+                        height={112}
+                        className="w-full h-full object-cover"
+                    />
+                </div>
+            </OrbitingElement>
+
+            {/* Imensiah logo floating near sphere during Works section */}
+            {works.map((work, index) => (
+                <OrbitingElement
+                    key={work.id}
+                    radius={1.3}
+                    angle={Math.PI * (0.1 + index * 0.2)}
+                    yOffset={-0.3}
+                    opacity={showWorks ? 1 : 0}
+                    scale={showWorks ? 1 : 0.5}
+                    floatIntensity={0.025}
+                    startBehind={true}
+                >
+                    <div className="w-28 h-14 md:w-36 md:h-18 flex items-center justify-center opacity-90 hover:opacity-100 transition-opacity">
+                        <Image
+                            src={work.logo}
+                            alt={work.name}
+                            width={144}
+                            height={72}
+                            className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(236,88,0,0.3)]"
+                        />
+                    </div>
+                </OrbitingElement>
+            ))}
+        </>
     );
 }
 
@@ -105,14 +92,7 @@ export default function Scene() {
     return (
         <div className="fixed inset-0 z-0">
             <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
-                <color attach="background" args={["#050505"]} />
-                <fog attach="fog" args={["#050505", 5, 15]} /> {/* Adjusted fog for visibility */}
-
-                <ambientLight intensity={0.5} />
-                <pointLight position={[10, 10, 10]} intensity={1} />
-
-                <Persimmon />
-                <Starfield />
+                <SceneContent />
             </Canvas>
         </div>
     );

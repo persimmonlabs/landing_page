@@ -18,11 +18,16 @@ export default function EmailForm() {
         setStatus("loading");
 
         try {
-            const res = await fetch("/api/subscribe", {
+            const res = await fetch("https://sheetdb.io/api/v1/68y4g18n5i0uo", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, locale: language }),
-
+                body: JSON.stringify({
+                    data: {
+                        email,
+                        locale: language,
+                        timestamp: new Date().toISOString()
+                    }
+                }),
             });
 
             if (!res.ok) throw new Error("Failed");
